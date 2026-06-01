@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     branch: main
-    buildCommand: npm install --workspaces && npm run prisma:generate --workspace=backend && npm run build --workspace=backend
+    buildCommand: npm install --workspaces --include=dev && npm run prisma:generate --workspace=backend && npm run build --workspace=backend
     startCommand: npm run start --workspace=backend
     envVars:
       - key: NODE_ENV
@@ -22,7 +22,7 @@ services:
     runtime: static
     name: carbon-footprint-web
     branch: main
-    buildCommand: npm install --workspaces && npm run build --workspace=frontend
+    buildCommand: npm install --workspaces --include=dev && npm run build --workspace=frontend
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite
