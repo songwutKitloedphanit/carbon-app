@@ -2,6 +2,7 @@ services:
   - type: web
     name: carbon-footprint-api
     runtime: node
+    plan: free
     branch: main
     buildCommand: npm install --workspaces && npm run prisma:generate --workspace=backend && npm run build --workspace=backend
     startCommand: npm run start --workspace=backend
