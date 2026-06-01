@@ -151,3 +151,17 @@ For this project, keep each Markdown file focused:
 - Put contributor workflow in `CONTRIBUTING.md`
 
 That separation will make the docs easier to maintain than putting everything into one large file.
+
+
+
+
+
+
+### deploy run in Power shell  and local (front and back end)
+
+Power shell
+& "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe" http 5173
+
+front back run in main 
+npm run dev
+
