@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import L, { type DragEndEvent, type LatLngBoundsExpression, type LatLngTuple, type LeafletMouseEvent } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png?url'
@@ -29,36 +29,50 @@ function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => voi
   return null
 }
 
-function MapViewController({ center, zoom }: { center: LatLngTuple; zoom: number }) {
-  const map = useMap()
-
-  useEffect(() => {
-    map.setView(center, zoom, { animate: false })
-  }, [center, map, zoom])
-
-  return null
-}
-
-function MapScopeController({
+function MapViewController({
+  center,
+  zoom,
   markerPosition,
   referencePoints,
+  scopeKey,
 }: {
+  center: LatLngTuple
+  zoom: number
   markerPosition: LatLngTuple | null
   referencePoints: LatLngTuple[]
+  scopeKey: string
 }) {
   const map = useMap()
+  const lastScopeKeyRef = useRef<string>('')
+  const lastMarkerKeyRef = useRef<string>('')
 
   useEffect(() => {
-    if (markerPosition) return
-    if (referencePoints.length === 0) return
+    const markerKey = markerPosition ? `${markerPosition[0].toFixed(8)}:${markerPosition[1].toFixed(8)}` : ''
+    const scopeChanged = lastScopeKeyRef.current !== scopeKey
+    const markerChanged = lastMarkerKeyRef.current !== markerKey
 
-    if (referencePoints.length === 1) {
-      map.setView(referencePoints[0], 13, { animate: false })
+    if (scopeChanged) {
+      lastScopeKeyRef.current = scopeKey
+
+      if (referencePoints.length > 1) {
+        map.fitBounds(referencePoints as LatLngBoundsExpression, { padding: [24, 24], animate: false })
+        return
+      }
+
+      if (referencePoints.length === 1) {
+        map.setView(referencePoints[0], 13, { animate: false })
+        return
+      }
+    }
+
+    if (markerPosition && markerChanged) {
+      lastMarkerKeyRef.current = markerKey
+      map.setView(markerPosition, 16, { animate: false })
       return
     }
 
-    map.fitBounds(referencePoints as LatLngBoundsExpression, { padding: [24, 24], animate: false })
-  }, [map, markerPosition, referencePoints])
+    map.setView(center, zoom, { animate: false })
+  }, [center, map, markerPosition, referencePoints, scopeKey, zoom])
 
   return null
 }
@@ -67,11 +81,13 @@ export function LandLocationPicker({
   latitude,
   longitude,
   referencePoints = [],
+  scopeKey,
   onChange,
 }: {
   latitude: number | null
   longitude: number | null
   referencePoints?: LatLngTuple[]
+  scopeKey: string
   onChange: (lat: number, lng: number) => void
 }) {
   const hasMarker = latitude != null && longitude != null
@@ -87,9 +103,14 @@ export function LandLocationPicker({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onPick={onChange} />
-        <MapViewController center={center} zoom={zoom} />
-        <MapScopeController markerPosition={markerPosition} referencePoints={referencePoints} />
-        {!markerPosition && referencePoints.map((point, index) => (
+        <MapViewController
+          center={center}
+          zoom={zoom}
+          markerPosition={markerPosition}
+          referencePoints={referencePoints}
+          scopeKey={scopeKey}
+        />
+        {referencePoints.map((point, index) => (
           <CircleMarker
             key={`${point[0]}-${point[1]}-${index}`}
             center={point}

@@ -547,24 +547,52 @@ function LandForm({
   const selectedSubdistrictLongitude = toCoordinateNumber(selectedSubdistrict?.longitude)
   const markerLatitude = Number.isFinite(parsedLatitude) ? parsedLatitude : selectedSubdistrictLatitude
   const markerLongitude = Number.isFinite(parsedLongitude) ? parsedLongitude : selectedSubdistrictLongitude
-  const referencePoints = useMemo<LatLngTuple[]>(() => {
-    const targetSubdistricts = selectedSubdistrictId != null
-      ? subdistricts.filter((subdistrict) => subdistrict.subdistricts_id === selectedSubdistrictId)
-      : selectedDistrictId != null
-        ? subdistricts.filter((subdistrict) => subdistrict.district_code === selectedDistrictId)
-        : selectedProvinceId != null
-          ? subdistricts.filter((subdistrict) => {
-              const districtId = subdistrict.district_code
-              return districtId != null && districtById[districtId]?.province_code === selectedProvinceId
-            })
-          : []
+  const provinceReferencePoints = useMemo<LatLngTuple[]>(() => {
+    if (selectedProvinceId == null) return []
 
-    return targetSubdistricts.flatMap((subdistrict) => {
+    return subdistricts.flatMap((subdistrict) => {
+      const districtId = subdistrict.district_code
+      if (districtId == null || districtById[districtId]?.province_code !== selectedProvinceId) return []
       const lat = toCoordinateNumber(subdistrict.latitude)
       const lng = toCoordinateNumber(subdistrict.longitude)
       return lat != null && lng != null ? [[lat, lng] as LatLngTuple] : []
     })
-  }, [districtById, selectedDistrictId, selectedProvinceId, selectedSubdistrictId, subdistricts])
+  }, [districtById, selectedProvinceId, subdistricts])
+
+  const districtReferencePoints = useMemo<LatLngTuple[]>(() => {
+    if (selectedDistrictId == null) return []
+
+    return subdistricts.flatMap((subdistrict) => {
+      if (subdistrict.district_code !== selectedDistrictId) return []
+      const lat = toCoordinateNumber(subdistrict.latitude)
+      const lng = toCoordinateNumber(subdistrict.longitude)
+      return lat != null && lng != null ? [[lat, lng] as LatLngTuple] : []
+    })
+  }, [selectedDistrictId, subdistricts])
+
+  const subdistrictReferencePoints = useMemo<LatLngTuple[]>(() => {
+    if (selectedSubdistrictId == null) return []
+
+    return subdistricts.flatMap((subdistrict) => {
+      if (subdistrict.subdistricts_id !== selectedSubdistrictId) return []
+      const lat = toCoordinateNumber(subdistrict.latitude)
+      const lng = toCoordinateNumber(subdistrict.longitude)
+      return lat != null && lng != null ? [[lat, lng] as LatLngTuple] : []
+    })
+  }, [selectedSubdistrictId, subdistricts])
+
+  const referencePoints = selectedDistrictId != null
+    ? districtReferencePoints
+    : selectedProvinceId != null
+      ? provinceReferencePoints
+      : subdistrictReferencePoints
+  const scopeKey = selectedDistrictId != null
+    ? `district:${selectedDistrictId}`
+    : selectedProvinceId != null
+      ? `province:${selectedProvinceId}`
+      : selectedSubdistrictId != null
+        ? `subdistrict:${selectedSubdistrictId}`
+        : 'default'
 
   const handleMapChange = (nextLatitude: number, nextLongitude: number) => {
     setLatitude(nextLatitude.toFixed(8))
@@ -711,14 +739,14 @@ function LandForm({
             <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
               คลิกบนแผนที่เพื่อวางตำแหน่ง หรือ drag marker เพื่อปรับค่าพิกัดให้แม่นยำขึ้น
             </div>
-            {selectedProvinceId != null && referencePoints.length > 0 && selectedDistrictId == null && (
+            {selectedProvinceId != null && provinceReferencePoints.length > 0 && selectedDistrictId == null && (
               <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                แผนที่กำลังอ้างอิงขอบเขตโดยประมาณของจังหวัดจากพิกัดตำบลที่มีอยู่ในฐานข้อมูล
+                แผนที่จะเริ่มซูมตามขอบเขตโดยประมาณของจังหวัดจากพิกัดตำบลที่มีอยู่ในฐานข้อมูล
               </div>
             )}
-            {selectedDistrictId != null && referencePoints.length > 0 && selectedSubdistrictId == null && (
+            {selectedDistrictId != null && districtReferencePoints.length > 0 && (
               <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                แผนที่กำลังอ้างอิงขอบเขตโดยประมาณของอำเภอจากพิกัดตำบลในอำเภอนี้
+                เมื่อเลือกอำเภอ แผนที่จะซูมลึกลงตามขอบเขตโดยประมาณของอำเภอจากพิกัดตำบลในอำเภอนี้
               </div>
             )}
             {!Number.isFinite(parsedLatitude) && !Number.isFinite(parsedLongitude) && selectedSubdistrictLatitude != null && selectedSubdistrictLongitude != null && (
@@ -732,6 +760,7 @@ function LandForm({
             latitude={markerLatitude}
             longitude={markerLongitude}
             referencePoints={referencePoints}
+            scopeKey={scopeKey}
             onChange={handleMapChange}
           />
         </div>
